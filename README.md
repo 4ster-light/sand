@@ -4,7 +4,7 @@ A sand simulator with realistic physics built with RaylibCS.
 
 ## 📹 Showcase
 
-![Sand](https://github.com/4ster-light/sand/blob/main/Showcase.webm)
+![Sand](https://github.com/4ster-light/sand/blob/main/Showcase.gif)
 
 ## 🚀 Getting Started
 
