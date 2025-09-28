@@ -113,30 +113,49 @@ namespace sand
                 var distance = diff.Length();
                 const float minDistance = Particle.Radius + Particle.Radius;
 
-                if (distance is >= minDistance or <= 0) continue;
+                // Skip if not colliding or invalid distance
+                if (distance is >= minDistance or <= 0f) continue;
                 
-                var normal = Vector2.Normalize(diff);
+                // Avoid normalizing a zero vector
+                // Small fallback normal
+                var normal = distance < 1e-4f ? new Vector2(1, 0) : diff / distance;
 
-                // Separate the particles
+                // Separate the particles equally
                 var overlap = minDistance - distance;
                 var separation = normal * (overlap * 0.5f);
 
                 newPosition += separation;
+                other.Position -= separation;
 
-                // Simple collision response - transfer some velocity
-                // TODO: IMPROVE
-                var relativeVelocity = Vector2.Dot(currentParticle.Velocity - other.Velocity, normal);
+                // Compute relative velocity along normal
+                var relVel = Vector2.Dot(currentParticle.Velocity - other.Velocity, normal);
 
-                if (relativeVelocity > 0) continue; // Particles are separating
+                // If they're separating, no impulse needed
+                if (relVel > 0)
+                {
+                    _particles[i] = other;
+                    continue;
+                }
 
+                // Collision response (equal mass assumed)
                 const float restitution = 0.2f; // Low bounce for sand
-                var impulse = -(1 + restitution) * relativeVelocity / 2; // Assuming equal mass
+                var impulseScalar = -(1 + restitution) * relVel * 0.5f; // divide by (1/m + 1/m) with m=1
 
-                currentParticle.Velocity += impulse * normal;
+                var impulse = impulseScalar * normal;
 
-                // Apply friction to simulate sand sticking together
-                var tangent = currentParticle.Velocity - Vector2.Dot(currentParticle.Velocity, normal) * normal;
-                currentParticle.Velocity -= tangent * 0.1f;
+                currentParticle.Velocity += impulse;
+                other.Velocity -= impulse;
+
+                // Apply tangential friction to simulate sand sticking together
+                var tangentCurrent = currentParticle.Velocity - Vector2.Dot(currentParticle.Velocity, normal) * normal;
+                var tangentOther = other.Velocity - Vector2.Dot(other.Velocity, normal) * normal;
+
+                const float tangentialDamping = 0.2f; // reduce tangential motion
+                currentParticle.Velocity -= tangentCurrent * tangentialDamping;
+                other.Velocity -= tangentOther * tangentialDamping;
+
+                // Write back modified other particle
+                _particles[i] = other;
             }
         }
 
